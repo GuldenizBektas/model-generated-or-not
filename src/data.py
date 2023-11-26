@@ -1,34 +1,31 @@
 import os
-import pandas as pd
-import numpy as np
 
+import joblib
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-import plotly.express as px
+import numpy as np
+import pandas as pd
 import plotly as py
-import plotly.graph_objs as go
-from plotly import tools
+import plotly.express as px
 import plotly.figure_factory as ff
+import plotly.graph_objs as go
+import seaborn as sns
+from plotly import tools
+from plotly.offline import init_notebook_mode, iplot, plot
 from plotly.subplots import make_subplots
-from plotly.offline import iplot,plot
-from plotly.offline import init_notebook_mode, iplot,plot
-
-from xgboost import XGBClassifier
-
-from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.linear_model import LogisticRegression
-from sklearn.naive_bayes import MultinomialNB, GaussianNB
+from sklearn.metrics import (accuracy_score, auc, classification_report,
+                             confusion_matrix, f1_score, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
-from sklearn.preprocessing import LabelEncoder  
-from sklearn.metrics import auc, roc_auc_score, roc_curve, confusion_matrix
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
 
 ### import data
 path = "data/train_essays.csv"
@@ -112,17 +109,33 @@ def conf_matrix(y, y_pred, title):
     ax.set_xlabel('Predicted', fontsize=20)
     plt.show()
 
-my_models= [
-    
+def save_model(pipeline: str, model_name: str = "model.joblib"):
+    joblib.dump(pipeline, model_name)
+
+my_models= [ 
     LogisticRegression(),
     KNeighborsClassifier(),
     RandomForestClassifier(),
     XGBClassifier(),
     DecisionTreeClassifier(),
     SVC()
-
-
 ]
 
-for model in my_models:
-    classification_models(model, save_path="/Users/guldenizbektas/Documents/LLM_generated_text/results/"+str(model)+".png")
+# for model in my_models:
+#     classification_models(model, save_path="/Users/guldenizbektas/Documents/LLM_generated_text/results/"+str(model)+".png")
+
+pipeline = Pipeline([('vect', CountVectorizer()),
+                    ('tfidf', TfidfTransformer()),
+                    ('model', SVC(C=10, gamma="scale", kernel="rbf"))])
+
+model = pipeline.fit(X_train, y_train)
+
+pred  = model.predict(X_test)
+
+print(classification_report(y_test,
+                            pred, 
+                            target_names={"0": "Generated", "1": "Not Generated"}))
+
+conf_matrix(y_test, pred, title="Confusion Matrix")
+
+save_model(pipeline, model_name="svc.joblib")
